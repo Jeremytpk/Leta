@@ -47,6 +47,9 @@ export default function LandingPage({ onLoginClick }: LandingPageProps) {
     setSubmitting(true);
     setSubmitError(null);
 
+    const emailBody = `Name: ${contactName}\nEmail: ${contactEmail}\n\nMessage:\n${contactMessage}`;
+    const mailtoUrl = `mailto:techs@leta.repair?subject=${encodeURIComponent(contactSubject || "Dispatch Request")}&body=${encodeURIComponent(emailBody)}`;
+
     try {
       const response = await fetch("/api/contact-message", {
         method: "POST",
@@ -68,13 +71,28 @@ export default function LandingPage({ onLoginClick }: LandingPageProps) {
         setContactEmail("");
         setContactSubject("");
         setContactMessage("");
+      } else if (response.status === 404) {
+        // Automatically fallback to mailto because the page is served statically on Netlify
+        console.warn("Backend API not found (404). Falling back to direct email composer.");
+        window.location.href = mailtoUrl;
+        setFormSubmitted(true);
+        setContactName("");
+        setContactEmail("");
+        setContactSubject("");
+        setContactMessage("");
       } else {
         const data = await response.json().catch(() => ({}));
         setSubmitError(data.error || "Failed to deliver dispatch message. Please try again.");
       }
     } catch (err) {
-      console.error("Error submitting contact form:", err);
-      setSubmitError("A connection error occurred. Please verify your connection and try again.");
+      console.error("Error submitting contact form, falling back to direct email:", err);
+      // Fallback to mailto link if network is blocked/404/CORS/hosting issues
+      window.location.href = mailtoUrl;
+      setFormSubmitted(true);
+      setContactName("");
+      setContactEmail("");
+      setContactSubject("");
+      setContactMessage("");
     } finally {
       setSubmitting(false);
     }
