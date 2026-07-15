@@ -17,10 +17,12 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && (
-        (request.auth.token.email == "jeremytopaka@gmail.com" || request.auth.token.email == "jey26@gmail.com" || request.auth.token.email == "admin@letatech.com") ||
+        ('email' in request.auth.token && (request.auth.token.email == "jeremytopaka@gmail.com" || request.auth.token.email == "jey26@gmail.com" || request.auth.token.email == "admin@letatech.com")) ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        (exists(/databases/$(database)/documents/employees/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role == "sup_admin")
+        (exists(/databases/$(database)/documents/employees/$(request.auth.uid)) && (
+         get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role == "sup_admin" ||
+         get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role == "admin"
+        ))
       );
     }
 
@@ -102,7 +104,8 @@ service cloud.firestore {
     // --- Inquiry Rules ---
     match /inquiries/{inquiryId} {
       allow create: if isValidId(inquiryId) && isValidInquiry(request.resource.data);
-      allow read, update, delete: if isAdmin() && isValidId(inquiryId);
+      allow read: if isAdmin();
+      allow update, delete: if isAdmin() && isValidId(inquiryId);
     }
   }
 }

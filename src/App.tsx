@@ -198,7 +198,7 @@ export default function App() {
       }
       
       let anyUnread = false;
-      if (currentUser.role === "sup_admin") {
+      if (currentUser.role === "sup_admin" || currentUser.role === "admin") {
         for (const msg of msgs) {
           if (msg.senderRole === "employee") {
             const techId = msg.senderId;
@@ -242,7 +242,7 @@ export default function App() {
   useEffect(() => {
     if (currentTab === "live-chat" && currentUser) {
       setHasUnreadChat(false);
-      if (currentUser.role !== "sup_admin") {
+      if (currentUser.role !== "sup_admin" && currentUser.role !== "admin") {
         localStorage.setItem(`lastViewedChatAt_${currentUser.uid}`, new Date().toISOString());
       }
     }
@@ -682,7 +682,7 @@ export default function App() {
   }
 
   // --- Authenticated Layout Render ---
-  const isSuperAdmin = currentUser.role === "sup_admin";
+  const isSuperAdmin = currentUser.role === "sup_admin" || currentUser.role === "admin";
 
   return (
     <div className="w-screen h-screen flex flex-col bg-slate-100 font-sans overflow-hidden select-none">
@@ -791,7 +791,7 @@ export default function App() {
                 <div>
                   <div className="text-xs font-bold text-slate-800 leading-none">{currentUser.fullName}</div>
                   <div className="text-[9px] text-indigo-600 font-mono mt-0.5 uppercase tracking-wider font-bold">
-                    {currentUser.role === "sup_admin" ? "System Controller" : "Onsite Technician"}
+                    {(currentUser.role === "sup_admin" || currentUser.role === "admin") ? "System Controller" : "Onsite Technician"}
                   </div>
                 </div>
                 <div className="h-7 w-7 rounded-sm bg-indigo-600 text-white flex items-center justify-center text-xs font-bold uppercase shadow-sm">

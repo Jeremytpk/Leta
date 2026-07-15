@@ -7,7 +7,7 @@ export interface Branch {
   createdAt: string;
 }
 
-export type UserRole = "sup_admin" | "employee";
+export type UserRole = "sup_admin" | "admin" | "employee";
 
 export interface Employee {
   uid: string;

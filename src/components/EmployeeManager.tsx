@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Plus, Users, Landmark, BadgeAlert, Key, ClipboardList, CheckCircle2, DollarSign, Edit3, Trash2, X, ShieldAlert } from "lucide-react";
-import { Employee, Branch } from "../types";
+import { Employee, Branch, UserRole } from "../types";
 import { createEmployee, updateEmployee, deleteEmployee } from "../lib/dataService";
 
 interface EmployeeManagerProps {
@@ -18,7 +18,7 @@ export default function EmployeeManager({ employees, branches, onRefresh }: Empl
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [branchId, setBranchId] = useState("");
-  const [role, setRole] = useState<"sup_admin" | "employee">("employee");
+  const [role, setRole] = useState<UserRole>("employee");
   const [phone, setPhone] = useState("");
   const [hourlyRate, setHourlyRate] = useState(45);
   const [password, setPassword] = useState("");
@@ -32,7 +32,7 @@ export default function EmployeeManager({ employees, branches, onRefresh }: Empl
   const [editPhone, setEditPhone] = useState("");
   const [editHourlyRate, setEditHourlyRate] = useState(45);
   const [editBranchId, setEditBranchId] = useState("");
-  const [editRole, setEditRole] = useState<"sup_admin" | "employee">("employee");
+  const [editRole, setEditRole] = useState<UserRole>("employee");
   const [editStatus, setEditStatus] = useState<"active" | "pending">("pending");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -319,6 +319,7 @@ export default function EmployeeManager({ employees, branches, onRefresh }: Empl
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-850"
                 >
                   <option value="employee">Technician</option>
+                  <option value="admin">Admin</option>
                   <option value="sup_admin">Sup Admin</option>
                 </select>
               </div>
@@ -475,6 +476,7 @@ export default function EmployeeManager({ employees, branches, onRefresh }: Empl
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-slate-800"
                   >
                     <option value="employee">Technician / Employee</option>
+                    <option value="admin">Administrator (admin)</option>
                     <option value="sup_admin">Super Administrator (sup_admin)</option>
                   </select>
                 </div>
@@ -547,7 +549,7 @@ export default function EmployeeManager({ employees, branches, onRefresh }: Empl
             </thead>
             <tbody className="divide-y divide-slate-100 text-[11px]">
               {employees.map((emp) => {
-                const isSuper = emp.role === "sup_admin";
+                const isSuper = emp.role === "sup_admin" || emp.role === "admin";
                 const matchingBranchName = branches.find((b) => b.id === emp.branchId)?.name || emp.branchId;
                 const activeVal = emp.status || "active";
 

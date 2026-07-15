@@ -25,7 +25,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ currentTab, setCurrentTab, currentUser, hasUnreadChat, isOpen, onClose, onLogout }: SidebarProps) {
-  const isAdmin = currentUser.role === "sup_admin";
+  const isAdmin = currentUser.role === "sup_admin" || currentUser.role === "admin";
 
   const navigationItems = [
     {
