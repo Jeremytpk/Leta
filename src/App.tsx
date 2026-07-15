@@ -41,6 +41,7 @@ import PaystubManager from "./components/PaystubManager";
 import DeveloperConsole from "./components/DeveloperConsole";
 import ProfileSettings from "./components/ProfileSettings";
 import LandingPage from "./components/LandingPage";
+import InquiryManager from "./components/InquiryManager";
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
@@ -1069,6 +1070,11 @@ export default function App() {
                   branches={branches} 
                   onRefresh={forceRefreshAll} 
                 />
+              )}
+
+              {/* Inquiry messages View */}
+              {currentTab === "inquiries" && isSuperAdmin && (
+                <InquiryManager />
               )}
 
               {/* Jobs Management View */}

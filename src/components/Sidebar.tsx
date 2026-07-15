@@ -7,7 +7,8 @@ import {
   LogOut, 
   Laptop, 
   UserSquare2,
-  X
+  X,
+  Mail
 } from "lucide-react";
 import { Employee } from "../types";
 // @ts-ignore
@@ -43,6 +44,12 @@ export default function Sidebar({ currentTab, setCurrentTab, currentUser, hasUnr
       id: "employees",
       label: "Employee Portal",
       icon: Users,
+      hidden: !isAdmin,
+    },
+    {
+      id: "inquiries",
+      label: "Dispatch Inquiries",
+      icon: Mail,
       hidden: !isAdmin,
     },
     {

@@ -112,6 +112,20 @@
         "status": { "type": "string" }
       },
       "required": ["id", "employeeId", "employeeName", "jobId", "payDate", "grossPay", "netPay", "status"]
+    },
+    "inquiry": {
+      "title": "Contact or Dispatch Inquiry",
+      "description": "Message submitted through the public website by clients",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique inquiry identifier" },
+        "name": { "type": "string", "description": "Full name of the client/sender" },
+        "email": { "type": "string", "description": "Contact email address" },
+        "subject": { "type": "string", "description": "Subject of the message" },
+        "message": { "type": "string", "description": "The detailed message content" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Message submission timestamp" }
+      },
+      "required": ["id", "name", "email", "message", "createdAt"]
     }
   },
   "firestore": {
@@ -142,6 +156,10 @@
     "/paystubs/{paystubId}": {
       "schema": "paystub",
       "description": "Official compensation records with automatic tax calculations"
+    },
+    "/inquiries/{inquiryId}": {
+      "schema": "inquiry",
+      "description": "Client requested messages or contact inquiries from LandingPage"
     }
   }
 }

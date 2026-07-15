@@ -70,6 +70,15 @@ export interface ChatMessage {
   recipientId?: string;
 }
 
+export interface Inquiry {
+  id: string;
+  name: string;
+  email: string;
+  subject?: string;
+  message: string;
+  createdAt: string;
+}
+
 export interface Paystub {
   id: string;
   employeeId: string;

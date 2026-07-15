@@ -15,7 +15,7 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "./firebase";
-import { Branch, Employee, Job, TicketComment, ChatMessage, Paystub, calculateDeductions, UserRole } from "../types";
+import { Branch, Employee, Job, TicketComment, ChatMessage, Paystub, calculateDeductions, UserRole, Inquiry } from "../types";
 
 // Active collection names
 const BRANCHES_COL = "branches";
@@ -23,6 +23,7 @@ const EMPLOYEES_COL = "employees";
 const JOBS_COL = "jobs";
 const CHATS_COL = "chats";
 const PAYSTUBS_COL = "paystubs";
+const INQUIRIES_COL = "inquiries";
 
 // --- Branch Management ---
 export async function createBranch(branch: Omit<Branch, "createdAt">): Promise<void> {
@@ -743,5 +744,57 @@ export async function seedInitialDatabaseIfEmpty(): Promise<void> {
     console.log("Database auto-seeding completed successfully!");
   } catch (error) {
     console.error("An error occurred while seeding: ", error);
+  }
+}
+
+// --- Inquiry Management ---
+export async function createInquiry(inquiry: Inquiry): Promise<void> {
+  const path = `${INQUIRIES_COL}/${inquiry.id}`;
+  try {
+    const docRef = doc(db, INQUIRIES_COL, inquiry.id);
+    await setDoc(docRef, inquiry);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function fetchInquiries(): Promise<Inquiry[]> {
+  try {
+    const listSnapshot = await getDocs(collection(db, INQUIRIES_COL));
+    const result: Inquiry[] = [];
+    listSnapshot.forEach((doc) => {
+      result.push(doc.data() as Inquiry);
+    });
+    return result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, INQUIRIES_COL);
+    return [];
+  }
+}
+
+export function subscribeInquiries(onUpdate: (inquiries: Inquiry[]) => void): Unsubscribe {
+  const q = query(collection(db, INQUIRIES_COL), orderBy("createdAt", "desc"));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const result: Inquiry[] = [];
+      snapshot.forEach((doc) => {
+        result.push(doc.data() as Inquiry);
+      });
+      onUpdate(result);
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.GET, INQUIRIES_COL);
+    }
+  );
+}
+
+export async function deleteInquiry(id: string): Promise<void> {
+  const path = `${INQUIRIES_COL}/${id}`;
+  try {
+    const docRef = doc(db, INQUIRIES_COL, id);
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
   }
 }

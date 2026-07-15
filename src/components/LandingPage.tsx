@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { createInquiry } from "../lib/dataService";
 import { 
   Building2, 
   Mail, 
@@ -51,41 +52,43 @@ export default function LandingPage({ onLoginClick }: LandingPageProps) {
     const mailtoUrl = `mailto:techs@leta.repair?subject=${encodeURIComponent(contactSubject || "Dispatch Request")}&body=${encodeURIComponent(emailBody)}`;
 
     try {
-      const response = await fetch("/api/contact-message", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: contactName,
-          email: contactEmail,
-          subject: contactSubject,
-          message: contactMessage,
-        }),
-      });
+      // 1. Save directly to Firestore as requested by user
+      const inquiryPayload = {
+        id: `inq-${Date.now()}`,
+        name: contactName,
+        email: contactEmail,
+        subject: contactSubject || "Dispatch Request",
+        message: contactMessage,
+        createdAt: new Date().toISOString(),
+      };
+      await createInquiry(inquiryPayload);
 
-      if (response.ok) {
-        setFormSubmitted(true);
-        // Reset fields
-        setContactName("");
-        setContactEmail("");
-        setContactSubject("");
-        setContactMessage("");
-      } else if (response.status === 404) {
-        // Automatically fallback to mailto because the page is served statically on Netlify
-        console.warn("Backend API not found (404). Falling back to direct email composer.");
-        window.location.href = mailtoUrl;
-        setFormSubmitted(true);
-        setContactName("");
-        setContactEmail("");
-        setContactSubject("");
-        setContactMessage("");
-      } else {
-        const data = await response.json().catch(() => ({}));
-        setSubmitError(data.error || "Failed to deliver dispatch message. Please try again.");
+      // 2. Try secondary REST POST endpoint (might return 404 in static hosting/Netlify, so we catch silently)
+      try {
+        await fetch("/api/contact-message", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: contactName,
+            email: contactEmail,
+            subject: contactSubject,
+            message: contactMessage,
+          }),
+        });
+      } catch (postErr) {
+        console.warn("REST endpoint skipped/not available (statically hosted). Saved in Firestore successfully.", postErr);
       }
+
+      setFormSubmitted(true);
+      // Reset fields
+      setContactName("");
+      setContactEmail("");
+      setContactSubject("");
+      setContactMessage("");
     } catch (err) {
-      console.error("Error submitting contact form, falling back to direct email:", err);
+      console.error("Error saving contact form to Firestore, falling back to direct email:", err);
       // Fallback to mailto link if network is blocked/404/CORS/hosting issues
       window.location.href = mailtoUrl;
       setFormSubmitted(true);

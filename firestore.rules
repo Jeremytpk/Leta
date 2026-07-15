@@ -28,6 +28,15 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == ownerId;
     }
 
+    function isValidInquiry(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.name is string && data.name.size() <= 128 &&
+             data.email is string && data.email.size() <= 128 &&
+             data.message is string && data.message.size() <= 10000 &&
+             data.createdAt is string &&
+             (!data.keys().hasAny(['subject']) || (data.subject is string && data.subject.size() <= 256));
+    }
+
     // --- Branch Rules ---
     match /branches/{branchId} {
       allow read: if isSignedIn() || true;
@@ -88,6 +97,12 @@ service cloud.firestore {
       allow read: if isSignedIn() && (isAdmin() || resource.data.employeeId == request.auth.uid);
       allow create: if (isAdmin() || (isSignedIn() && request.resource.data.employeeId == request.auth.uid)) && isValidId(paystubId);
       allow update, delete: if isAdmin() && isValidId(paystubId);
+    }
+
+    // --- Inquiry Rules ---
+    match /inquiries/{inquiryId} {
+      allow create: if isValidId(inquiryId) && isValidInquiry(request.resource.data);
+      allow read, update, delete: if isAdmin() && isValidId(inquiryId);
     }
   }
 }
