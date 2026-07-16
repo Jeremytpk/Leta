@@ -19,12 +19,13 @@ interface SidebarProps {
   setCurrentTab: (tab: string) => void;
   currentUser: Employee;
   hasUnreadChat: boolean;
+  unreadInquiriesCount?: number;
   isOpen: boolean;
   onClose: () => void;
   onLogout: () => void;
 }
 
-export default function Sidebar({ currentTab, setCurrentTab, currentUser, hasUnreadChat, isOpen, onClose, onLogout }: SidebarProps) {
+export default function Sidebar({ currentTab, setCurrentTab, currentUser, hasUnreadChat, unreadInquiriesCount = 0, isOpen, onClose, onLogout }: SidebarProps) {
   const isAdmin = currentUser.role === "sup_admin" || currentUser.role === "admin";
 
   const navigationItems = [
@@ -161,6 +162,15 @@ export default function Sidebar({ currentTab, setCurrentTab, currentUser, hasUnr
                 </div>
                 {item.id === "live-chat" && hasUnreadChat && (
                   <span className="w-2 h-2 rounded-full bg-rose-500 border border-slate-900 animate-pulse block shrink-0 ml-1.5" />
+                )}
+                {item.id === "inquiries" && (
+                  <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full border block shrink-0 ml-1.5 font-mono leading-none transition-colors ${
+                    unreadInquiriesCount > 0 
+                      ? "bg-rose-500 text-white border-rose-600 animate-pulse" 
+                      : "bg-slate-800 text-slate-400 border-slate-700"
+                  }`}>
+                    {unreadInquiriesCount}
+                  </span>
                 )}
               </button>
             );

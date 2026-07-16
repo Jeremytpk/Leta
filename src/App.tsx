@@ -15,7 +15,7 @@ import {
   AlertCircle,
   Menu
 } from "lucide-react";
-import { Employee, Branch, Job } from "./types";
+import { Employee, Branch, Job, Inquiry } from "./types";
 import { getDocs, collection } from "firebase/firestore";
 import { db, auth } from "./lib/firebase";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
@@ -27,7 +27,8 @@ import {
   registerUserAndEmployee,
   subscribeEmployees,
   updateEmployee,
-  subscribeLiveChat
+  subscribeLiveChat,
+  subscribeInquiries
 } from "./lib/dataService";
 
 import Sidebar from "./components/Sidebar";
@@ -42,6 +43,7 @@ import DeveloperConsole from "./components/DeveloperConsole";
 import ProfileSettings from "./components/ProfileSettings";
 import LandingPage from "./components/LandingPage";
 import InquiryManager from "./components/InquiryManager";
+import DashboardCharts from "./components/DashboardCharts";
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
@@ -53,6 +55,8 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<string>("dashboard");
   const [loading, setLoading] = useState(true);
   const [hasUnreadChat, setHasUnreadChat] = useState(false);
+  const [unreadInquiriesCount, setUnreadInquiriesCount] = useState(0);
+  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Login Form States
@@ -247,6 +251,22 @@ export default function App() {
       }
     }
   }, [currentTab, currentUser]);
+
+  // Monitor unread inquiry messages to show unread count badge in sidebar
+  useEffect(() => {
+    if (!currentUser || (currentUser.role !== "sup_admin" && currentUser.role !== "admin")) {
+      setUnreadInquiriesCount(0);
+      return;
+    }
+    
+    const unsub = subscribeInquiries((inqs) => {
+      setInquiries(inqs);
+      const count = inqs.filter((inq) => inq.read === false).length;
+      setUnreadInquiriesCount(count);
+    });
+
+    return () => unsub();
+  }, [currentUser]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -703,6 +723,7 @@ export default function App() {
           setCurrentTab={setCurrentTab} 
           currentUser={currentUser} 
           hasUnreadChat={hasUnreadChat}
+          unreadInquiriesCount={unreadInquiriesCount}
           isOpen={mobileSidebarOpen}
           onClose={() => setMobileSidebarOpen(false)}
           onLogout={handleLogout} 
@@ -883,6 +904,9 @@ export default function App() {
                       </span>
                     </div>
                   </div>
+
+                  {/* Tracking Evolutions Chart */}
+                  <DashboardCharts jobs={jobs} inquiries={inquiries} employees={employees} />
 
                   {/* Main Dashboard Panel layout split */}
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">

@@ -77,6 +77,7 @@ export interface Inquiry {
   subject?: string;
   message: string;
   createdAt: string;
+  read?: boolean;
 }
 
 export interface Paystub {

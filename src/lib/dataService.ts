@@ -798,3 +798,13 @@ export async function deleteInquiry(id: string): Promise<void> {
     handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
+
+export async function updateInquiry(id: string, updates: Partial<Inquiry>): Promise<void> {
+  const path = `${INQUIRIES_COL}/${id}`;
+  try {
+    const docRef = doc(db, INQUIRIES_COL, id);
+    await updateDoc(docRef, updates);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}

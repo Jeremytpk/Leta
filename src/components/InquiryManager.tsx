@@ -9,44 +9,93 @@ import {
   RefreshCw, 
   Inbox,
   Calendar,
-  Tag
+  Tag,
+  Copy,
+  Check,
+  ExternalLink
 } from "lucide-react";
 import { Inquiry } from "../types";
-import { subscribeInquiries, deleteInquiry } from "../lib/dataService";
+import { subscribeInquiries, deleteInquiry, updateInquiry } from "../lib/dataService";
 
 export default function InquiryManager() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     // Subscribe to incoming messages in real-time
     const unsubscribe = subscribeInquiries((freshInquiries) => {
       setInquiries(freshInquiries);
       setLoading(false);
-      // Auto-select the first inquiry if none is selected
-      if (freshInquiries.length > 0 && !selectedInquiry) {
-        setSelectedInquiry(freshInquiries[0]);
+      
+      if (freshInquiries.length > 0) {
+        if (!selectedInquiry) {
+          const firstInq = freshInquiries[0];
+          setSelectedInquiry(firstInq);
+          if (firstInq.read === false) {
+            updateInquiry(firstInq.id, { read: true }).catch(err => {
+              console.error("Failed to mark auto-selected inquiry as read:", err);
+            });
+          }
+        } else {
+          // Sync selection with latest data from subscription
+          const matched = freshInquiries.find((i) => i.id === selectedInquiry.id);
+          if (matched && JSON.stringify(matched) !== JSON.stringify(selectedInquiry)) {
+            setSelectedInquiry(matched);
+          }
+        }
       }
     });
 
     return () => unsubscribe();
   }, [selectedInquiry]);
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to permanently delete this inquiry message?")) {
-      return;
+  const selectInquiry = async (inq: Inquiry) => {
+    setSelectedInquiry(inq);
+    if (inq.read === false) {
+      try {
+        await updateInquiry(inq.id, { read: true });
+      } catch (err) {
+        console.error("Failed to mark inquiry as read:", err);
+      }
     }
+  };
+
+  const handleDeleteClick = (id: string) => {
+    setDeleteConfirmId(id);
+    setDeleteError(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirmId) return;
+    setIsDeleting(true);
+    setDeleteError(null);
     try {
-      await deleteInquiry(id);
-      if (selectedInquiry?.id === id) {
+      await deleteInquiry(deleteConfirmId);
+      if (selectedInquiry?.id === deleteConfirmId) {
         setSelectedInquiry(null);
       }
+      setDeleteConfirmId(null);
     } catch (err) {
       console.error("Failed to delete inquiry:", err);
-      alert("Failed to delete inquiry. Please try again.");
+      setDeleteError("Failed to delete. You must have administrator permissions.");
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  const handleReplyWithZoho = (email: string) => {
+    navigator.clipboard.writeText(email).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    }).catch(err => {
+      console.error("Failed to copy email to clipboard:", err);
+    });
   };
 
   const filteredInquiries = inquiries.filter((inq) => {
@@ -58,6 +107,8 @@ export default function InquiryManager() {
       inq.message.toLowerCase().includes(q)
     );
   });
+
+  const unreadCount = inquiries.filter((inq) => inq.read === false).length;
 
   return (
     <div id="inquiry-manager-root" className="space-y-5">
@@ -72,8 +123,21 @@ export default function InquiryManager() {
             Real-time feed of contact inquiries and dispatch requests submitted from the main landing page.
           </p>
         </div>
-        <div className="flex items-center gap-2 font-mono text-[10px] bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-100 font-bold tracking-tight shrink-0 self-start sm:self-center">
-          <span>{inquiries.length} Messages Received</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 font-mono text-[10px] bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 font-bold tracking-tight shrink-0 self-start sm:self-center">
+            <span>{inquiries.length} Messages Received</span>
+          </div>
+          {unreadCount > 0 ? (
+            <div className="flex items-center gap-1.5 font-mono text-[10px] bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg border border-amber-200 font-bold tracking-tight shrink-0 self-start sm:self-center animate-pulse">
+              <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
+              <span>{unreadCount} Unread</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 font-mono text-[10px] bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-100 font-bold tracking-tight shrink-0 self-start sm:self-center">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+              <span>0 Unread</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -122,7 +186,7 @@ export default function InquiryManager() {
                 return (
                   <div
                     key={inq.id}
-                    onClick={() => setSelectedInquiry(inq)}
+                    onClick={() => selectInquiry(inq)}
                     className={`p-3.5 hover:bg-slate-50 transition-all cursor-pointer text-left space-y-1.5 border-l-3 ${
                       isSelected 
                         ? "bg-slate-50/80 border-l-indigo-600 shadow-2xs" 
@@ -130,15 +194,20 @@ export default function InquiryManager() {
                     }`}
                   >
                     <div className="flex justify-between items-start gap-2">
-                      <span className="font-sans font-bold text-slate-900 text-xs truncate max-w-[150px]">
-                        {inq.name}
-                      </span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {inq.read === false && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 shrink-0 animate-pulse" title="Unread inquiry" />
+                        )}
+                        <span className={`font-sans text-xs truncate max-w-[150px] ${inq.read === false ? "font-extrabold text-slate-950" : "font-bold text-slate-900"}`}>
+                          {inq.name}
+                        </span>
+                      </div>
                       <span className="font-mono text-[9px] text-slate-400 whitespace-nowrap">
                         {formattedDate}
                       </span>
                     </div>
 
-                    <div className="font-sans text-[11px] font-semibold text-slate-700 truncate">
+                    <div className={`font-sans text-[11px] truncate ${inq.read === false ? "font-bold text-slate-900" : "font-semibold text-slate-700"}`}>
                       {inq.subject || "No Subject"}
                     </div>
 
@@ -183,7 +252,7 @@ export default function InquiryManager() {
                 </div>
 
                 <button
-                  onClick={() => handleDelete(selectedInquiry.id)}
+                  onClick={() => handleDeleteClick(selectedInquiry.id)}
                   className="p-2 bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 hover:border-rose-200 rounded-lg transition-colors cursor-pointer shrink-0"
                   title="Delete message"
                 >
@@ -233,14 +302,45 @@ export default function InquiryManager() {
               </div>
 
               {/* Footer actions */}
-              <div className="p-4 border-t border-slate-100 bg-slate-50/40 text-right flex justify-end gap-2">
-                <a
-                  href={`mailto:${selectedInquiry.email}?subject=RE: ${encodeURIComponent(selectedInquiry.subject || "Inquiry")}`}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
-                >
-                  <Mail className="w-3.5 h-3.5" />
-                  <span>Reply via Email</span>
-                </a>
+              <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="text-left">
+                  <div className="font-sans text-[10px] text-slate-500 font-medium">
+                    Reply Account: <span className="font-mono text-indigo-600 font-bold">techs@leta.repair</span>
+                  </div>
+                  {copied ? (
+                    <div className="text-emerald-600 font-sans text-[11px] font-bold flex items-center gap-1 mt-0.5 animate-pulse">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Sender's email copied to clipboard!</span>
+                    </div>
+                  ) : (
+                    <div className="text-slate-400 font-sans text-[10px] mt-0.5 leading-tight">
+                      Clicking "Reply via Zoho Mail" copies the sender's email to your clipboard.
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-2 justify-end">
+                  {/* Native mail client backup */}
+                  <a
+                    href={`mailto:${selectedInquiry.email}?subject=RE: ${encodeURIComponent(selectedInquiry.subject || "Inquiry")}`}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-sans text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-slate-250"
+                  >
+                    <Mail className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Default Mail App</span>
+                  </a>
+
+                  {/* Primary Zoho Mail reply */}
+                  <a
+                    href={`https://mail.zoho.com/zm/#mail/compose/to=${encodeURIComponent(selectedInquiry.email)}?subject=${encodeURIComponent("RE: " + (selectedInquiry.subject || "Inquiry"))}&body=${encodeURIComponent("Dear " + selectedInquiry.name + ",\n\n")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => handleReplyWithZoho(selectedInquiry.email)}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Reply via Zoho Mail</span>
+                  </a>
+                </div>
               </div>
             </div>
           ) : (
@@ -252,6 +352,58 @@ export default function InquiryManager() {
         </div>
 
       </div>
+
+      {/* Custom Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 max-w-sm w-full p-6 space-y-4 animate-scaleUp">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="p-2 bg-rose-50 rounded-lg">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <h4 className="font-sans font-extrabold text-slate-900 text-sm">
+                Confirm Deletion
+              </h4>
+            </div>
+            
+            <p className="font-sans text-xs text-slate-600 leading-normal">
+              Are you sure you want to permanently delete this inquiry message? This action is irreversible and will also delete the record from Firestore.
+            </p>
+
+            {deleteError && (
+              <div className="p-2.5 bg-rose-50 border border-rose-100 text-[11px] text-rose-700 font-medium rounded-lg leading-snug">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmId(null)}
+                disabled={isDeleting}
+                className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-sans text-xs font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-sans text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <>
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Yes, Delete</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

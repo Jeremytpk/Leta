@@ -60,6 +60,7 @@ export default function LandingPage({ onLoginClick }: LandingPageProps) {
         subject: contactSubject || "Dispatch Request",
         message: contactMessage,
         createdAt: new Date().toISOString(),
+        read: false,
       };
       await createInquiry(inquiryPayload);
 
