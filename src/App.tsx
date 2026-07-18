@@ -673,21 +673,8 @@ export default function App() {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsRegistering(true);
-                    if (!regBranchId && branches.length > 0) {
-                      setRegBranchId(branches[0].id);
-                    }
-                  }}
-                  className="w-full py-1.5 bg-transparent hover:bg-slate-950 border border-dashed border-slate-800 text-slate-300 font-sans text-xs font-semibold rounded-xl transition-all cursor-pointer text-center"
-                >
-                  Create Account / Register Profile
-                </button>
-
-                <button
-                  type="button"
                   onClick={() => setShowPortal(false)}
-                  className="w-full py-1 text-slate-500 hover:text-slate-350 font-sans text-xs font-semibold transition-all cursor-pointer text-center"
+                  className="w-full py-1.5 text-slate-500 hover:text-slate-350 font-sans text-xs font-semibold transition-all cursor-pointer text-center"
                 >
                   ← Back to Main Website
                 </button>

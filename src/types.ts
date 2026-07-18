@@ -92,6 +92,9 @@ export interface Inquiry {
   expectedPay?: string;
   experienceYears?: string;
   availability?: "Full-time" | "Part-time" | "Contract";
+  proposedLoginEmail?: string;
+  confirmedFullName?: string;
+  proposedPassword?: string;
 }
 
 export interface JobOffer {

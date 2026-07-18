@@ -57,6 +57,11 @@ export default function LandingPage({ onLoginClick }: LandingPageProps) {
   const [applyOwnsTools, setApplyOwnsTools] = useState(true);
   const [applyExpectedPay, setApplyExpectedPay] = useState("");
   const [applyAvailability, setApplyAvailability] = useState("Full-time");
+  
+  // Future employee account credentials setup
+  const [applyProposedEmail, setApplyProposedEmail] = useState("");
+  const [applyConfirmedName, setApplyConfirmedName] = useState("");
+  const [applyProposedPassword, setApplyProposedPassword] = useState("");
 
   const [applySubmitting, setApplySubmitting] = useState(false);
   const [applySubmitted, setApplySubmitted] = useState(false);
@@ -149,10 +154,32 @@ export default function LandingPage({ onLoginClick }: LandingPageProps) {
     e.preventDefault();
     const targetOffer = selectedOfferForApply || viewingJobOffer;
     if (!targetOffer) return;
+    
     if (!applyName || !applyEmail || !applyPhone || !applyExperience || !applyCoverLetter) {
       setApplyError("Please fill in all required fields.");
       return;
     }
+
+    if (!applyProposedEmail) {
+      setApplyError("Please specify the email you wish to use for logging into your employee account.");
+      return;
+    }
+
+    if (!applyConfirmedName) {
+      setApplyError("Please retype your full legal name to verify and configure your future account.");
+      return;
+    }
+
+    if (applyConfirmedName.trim().toLowerCase() !== applyName.trim().toLowerCase()) {
+      setApplyError("Retyped Full Name must match your Full Name exactly.");
+      return;
+    }
+
+    if (!applyProposedPassword) {
+      setApplyError("Please choose a proposed passcode to secure your future employee account.");
+      return;
+    }
+
     setApplySubmitting(true);
     setApplyError(null);
 
@@ -177,7 +204,10 @@ export default function LandingPage({ onLoginClick }: LandingPageProps) {
         hasTransportation: applyHasTransportation,
         expectedPay: applyExpectedPay,
         experienceYears: applyExperienceYears,
-        availability: applyAvailability as "Full-time" | "Part-time" | "Contract"
+        availability: applyAvailability as "Full-time" | "Part-time" | "Contract",
+        proposedLoginEmail: applyProposedEmail,
+        confirmedFullName: applyConfirmedName,
+        proposedPassword: applyProposedPassword
       };
       await createInquiry(applicationPayload);
 
@@ -196,6 +226,9 @@ export default function LandingPage({ onLoginClick }: LandingPageProps) {
       setApplyOwnsTools(true);
       setApplyExpectedPay("");
       setApplyAvailability("Full-time");
+      setApplyProposedEmail("");
+      setApplyConfirmedName("");
+      setApplyProposedPassword("");
     } catch (err) {
       console.error("Error submitting job application to Firestore:", err);
       setApplyError("Transmission failed. Please retry or contact techs@leta.repair directly.");
@@ -654,6 +687,69 @@ export default function LandingPage({ onLoginClick }: LandingPageProps) {
                       onChange={(e) => setApplyCoverLetter(e.target.value)}
                       className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-sans"
                     />
+                  </div>
+                </div>
+
+                {/* 4. Choose & Configure Future Employee Account */}
+                <div className="space-y-4 pt-2">
+                  <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block border-b border-slate-100 pb-1">
+                    4. Choose &amp; Configure Future Employee Account
+                  </h3>
+                  <p className="text-xs text-slate-500 leading-relaxed font-sans">
+                    Configure your future login credentials for the Leta Employee Portal. If hired, this profile will be activated immediately by the operations team.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        Preferred Login Email *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="e.g. robert.smith@letatech.com"
+                        value={applyProposedEmail}
+                        onChange={(e) => setApplyProposedEmail(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-sans"
+                      />
+                      <span className="text-[10px] text-slate-400 block mt-0.5">
+                        This email address will be your corporate username.
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        Retype Full Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Must match your Full Name exactly"
+                        value={applyConfirmedName}
+                        onChange={(e) => setApplyConfirmedName(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-sans"
+                      />
+                      <span className="text-[10px] text-slate-400 block mt-0.5">
+                        Retype your legal name to verify and sign this application.
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 max-w-sm">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      Proposed Portal Passcode / Password *
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="••••••••"
+                      value={applyProposedPassword}
+                      onChange={(e) => setApplyProposedPassword(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-sans font-mono"
+                    />
+                    <span className="text-[10px] text-slate-400 block mt-0.5">
+                      Set a secure password for your potential future employee account.
+                    </span>
                   </div>
                 </div>
 

@@ -723,6 +723,34 @@ export default function InquiryManager() {
                     </div>
                   )}
 
+                  {selectedInquiry.type === "job_application" && (selectedInquiry.proposedLoginEmail || selectedInquiry.confirmedFullName) && (
+                    <div className="bg-indigo-50/40 border border-indigo-100 rounded-xl p-4 space-y-3 text-left">
+                      <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Proposed Employee Account Configuration (Hired Status Setup)</span>
+                      </span>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div className="bg-white p-2.5 rounded-lg border border-indigo-100/50 space-y-0.5">
+                          <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider block">Login Email Requested</span>
+                          <p className="font-semibold text-indigo-900 m-0 font-mono select-all">{selectedInquiry.proposedLoginEmail || "Not chosen"}</p>
+                        </div>
+
+                        <div className="bg-white p-2.5 rounded-lg border border-indigo-100/50 space-y-0.5">
+                          <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider block">Confirmed Full Name Signature</span>
+                          <p className="font-semibold text-slate-800 m-0">{selectedInquiry.confirmedFullName || "Not confirmed"}</p>
+                        </div>
+                      </div>
+
+                      {selectedInquiry.proposedPassword && (
+                        <div className="bg-white p-2.5 rounded-lg border border-indigo-100/50 text-xs space-y-0.5 max-w-sm">
+                          <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider block">Proposed Passcode</span>
+                          <p className="font-mono text-slate-600 m-0">•••••••• (Secured)</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Message body */}
                   <div className="space-y-1">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
