@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { createInquiry } from "../lib/dataService";
+import React, { useState, useEffect } from "react";
+import { createInquiry, subscribeJobOffers } from "../lib/dataService";
+import { JobOffer, Inquiry } from "../types";
 import { 
   Building2, 
   Mail, 
@@ -16,7 +17,14 @@ import {
   X, 
   CheckCircle2,
   Clock,
-  ChevronRight
+  ChevronRight,
+  Briefcase,
+  FileText,
+  DollarSign,
+  Calendar,
+  Info,
+  User,
+  ArrowLeft
 } from "lucide-react";
 // @ts-ignore
 import LetaLogo from "../../assets/LetaLogo.png";
@@ -28,6 +36,32 @@ interface LandingPageProps {
 export default function LandingPage({ onLoginClick }: LandingPageProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
+  // Job Offers state
+  const [jobOffers, setJobOffers] = useState<JobOffer[]>([]);
+  const [viewingJobOffer, setViewingJobOffer] = useState<JobOffer | null>(null);
+  const [selectedOfferForApply, setSelectedOfferForApply] = useState<JobOffer | null>(null);
+
+  // Job Apply Form States
+  const [applyName, setApplyName] = useState("");
+  const [applyEmail, setApplyEmail] = useState("");
+  const [applyPhone, setApplyPhone] = useState("");
+  const [applyExperience, setApplyExperience] = useState("");
+  const [applyCoverLetter, setApplyCoverLetter] = useState("");
+  
+  // Enhanced candidate fields
+  const [applyBranch, setApplyBranch] = useState("Atlanta HQ");
+  const [applyExperienceYears, setApplyExperienceYears] = useState("1-3 Years");
+  const [applyCertification, setApplyCertification] = useState("None");
+  const [applyHasLicense, setApplyHasLicense] = useState(true);
+  const [applyHasTransportation, setApplyHasTransportation] = useState(true);
+  const [applyOwnsTools, setApplyOwnsTools] = useState(true);
+  const [applyExpectedPay, setApplyExpectedPay] = useState("");
+  const [applyAvailability, setApplyAvailability] = useState("Full-time");
+
+  const [applySubmitting, setApplySubmitting] = useState(false);
+  const [applySubmitted, setApplySubmitted] = useState(false);
+  const [applyError, setApplyError] = useState<string | null>(null);
+
   // Contact Form States
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -40,6 +74,15 @@ export default function LandingPage({ onLoginClick }: LandingPageProps) {
   // Modal States
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
+
+  // Subscribe to Job Offers
+  useEffect(() => {
+    const unsubscribe = subscribeJobOffers((offers) => {
+      // Filter active job listings to show the candidates
+      setJobOffers(offers.filter(o => o.status === "active"));
+    });
+    return () => unsubscribe();
+  }, []);
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,6 +145,65 @@ export default function LandingPage({ onLoginClick }: LandingPageProps) {
     }
   };
 
+  const handleApplySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetOffer = selectedOfferForApply || viewingJobOffer;
+    if (!targetOffer) return;
+    if (!applyName || !applyEmail || !applyPhone || !applyExperience || !applyCoverLetter) {
+      setApplyError("Please fill in all required fields.");
+      return;
+    }
+    setApplySubmitting(true);
+    setApplyError(null);
+
+    try {
+      const applicationPayload: Inquiry = {
+        id: `appl-${Date.now()}`,
+        name: applyName,
+        email: applyEmail,
+        subject: `Application: ${targetOffer.title}`,
+        message: applyCoverLetter,
+        createdAt: new Date().toISOString(),
+        read: false,
+        type: "job_application",
+        jobOfferId: targetOffer.id,
+        jobTitle: targetOffer.title,
+        phone: applyPhone,
+        resumeText: applyExperience,
+        preferredBranch: applyBranch,
+        hasLicense: applyHasLicense,
+        certifications: applyCertification !== "None" ? [applyCertification] : [],
+        ownsTools: applyOwnsTools,
+        hasTransportation: applyHasTransportation,
+        expectedPay: applyExpectedPay,
+        experienceYears: applyExperienceYears,
+        availability: applyAvailability as "Full-time" | "Part-time" | "Contract"
+      };
+      await createInquiry(applicationPayload);
+
+      setApplySubmitted(true);
+      // Reset fields
+      setApplyName("");
+      setApplyEmail("");
+      setApplyPhone("");
+      setApplyExperience("");
+      setApplyCoverLetter("");
+      setApplyBranch("Atlanta HQ");
+      setApplyExperienceYears("1-3 Years");
+      setApplyCertification("None");
+      setApplyHasLicense(true);
+      setApplyHasTransportation(true);
+      setApplyOwnsTools(true);
+      setApplyExpectedPay("");
+      setApplyAvailability("Full-time");
+    } catch (err) {
+      console.error("Error submitting job application to Firestore:", err);
+      setApplyError("Transmission failed. Please retry or contact techs@leta.repair directly.");
+    } finally {
+      setApplySubmitting(false);
+    }
+  };
+
   const scrollToSection = (id: string) => {
     setMobileMenuOpen(false);
     const element = document.getElementById(id);
@@ -109,6 +211,491 @@ export default function LandingPage({ onLoginClick }: LandingPageProps) {
       element.scrollIntoView({ behavior: "smooth" });
     }
   };
+
+  if (viewingJobOffer) {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col selection:bg-indigo-100 selection:text-indigo-900 animate-fadeIn">
+        {/* Sub-page Navigation Header */}
+        <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-xs">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
+            
+            {/* Logo Brand */}
+            <div className="flex items-center gap-3 cursor-pointer" onClick={() => setViewingJobOffer(null)}>
+              <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 shadow-xs">
+                <img 
+                  src={LetaLogo} 
+                  alt="Leta Logo" 
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                    const fb = e.currentTarget.nextElementSibling;
+                    if (fb) {
+                      fb.classList.remove("hidden");
+                      fb.classList.add("flex");
+                    }
+                  }}
+                />
+                <div className="hidden p-2 bg-indigo-600 text-white w-full h-full items-center justify-center">
+                  <Building2 className="w-5 h-5" />
+                </div>
+              </div>
+              <div>
+                <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 block leading-tight">
+                  Leta Technologies
+                </span>
+                <span className="font-mono text-[9px] text-indigo-600 uppercase tracking-widest block font-bold">
+                  Careers Desk
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setViewingJobOffer(null);
+                setApplySubmitted(false);
+                setApplyError(null);
+              }}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 hover:border-slate-300 text-slate-700 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-2xs"
+            >
+              <ArrowLeft className="w-4 h-4 text-slate-500" />
+              <span>Back to Listings</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Sub-page Content Area */}
+        <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+          
+          {/* Breadcrumbs */}
+          <div className="flex items-center gap-2 text-xs text-slate-400 font-sans">
+            <button 
+              onClick={() => {
+                setViewingJobOffer(null);
+                setApplySubmitted(false);
+                setApplyError(null);
+              }} 
+              className="hover:text-indigo-600 transition-colors cursor-pointer"
+            >
+              Careers List
+            </button>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <span className="text-slate-600 truncate max-w-[150px] sm:max-w-none font-medium">{viewingJobOffer.title}</span>
+          </div>
+
+          {/* Job Info Hero Banner */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-10 text-left space-y-6 shadow-2xs">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-sans font-extrabold text-2xl sm:text-3xl tracking-tight text-slate-950 leading-tight">
+                  {viewingJobOffer.title}
+                </h1>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-50 border border-indigo-100 text-indigo-700 uppercase">
+                  {viewingJobOffer.status}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-y-2.5 gap-x-6 text-xs sm:text-sm text-slate-600">
+                <span className="flex items-center gap-2 font-sans">
+                  <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                  <strong className="text-slate-800">{viewingJobOffer.location}</strong>
+                </span>
+                <span className="flex items-center gap-2 font-sans">
+                  <DollarSign className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <strong className="text-emerald-700">{viewingJobOffer.salaryRange || "Competitive"}</strong>
+                </span>
+                <span className="flex items-center gap-2 font-sans">
+                  <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                  <span>Listed on {new Date(viewingJobOffer.createdAt).toLocaleDateString()}</span>
+                </span>
+              </div>
+            </div>
+
+            <hr className="border-slate-100" />
+
+            {/* Description */}
+            <div className="space-y-3">
+              <h3 className="font-sans font-bold text-[10px] text-indigo-600 uppercase tracking-wider block">
+                Role Description
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-wrap font-sans">
+                {viewingJobOffer.description}
+              </p>
+            </div>
+
+            {/* Requirements */}
+            {viewingJobOffer.requirements && (
+              <div className="space-y-3 pt-4 border-t border-slate-100">
+                <h3 className="font-sans font-bold text-[10px] text-indigo-600 uppercase tracking-wider block">
+                  Role Requirements &amp; Qualifications
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-wrap font-sans">
+                  {viewingJobOffer.requirements}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Quick Info Protocol Callout */}
+          <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 sm:p-6 text-left flex gap-4 items-start shadow-2xs">
+            <Info className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h4 className="font-sans font-extrabold text-indigo-950 text-xs sm:text-sm leading-tight">
+                Georgia Technician Onboarding Protocol
+              </h4>
+              <p className="text-[11px] sm:text-xs text-indigo-800/90 leading-relaxed font-sans">
+                Leta Technologies LLC maintains registered field branches across Georgia. Field dispatch roles require active coordinate mapping, tool validation, and compliance with local safety regulations.
+              </p>
+            </div>
+          </div>
+
+          {/* Comprehensive Application Form directly integrated here */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-10 text-left space-y-6 shadow-2xs">
+            <div className="space-y-1">
+              <h2 className="font-sans font-extrabold text-lg sm:text-xl text-slate-950 tracking-tight flex items-center gap-2">
+                <FileText className="w-5 h-5 text-indigo-600" />
+                <span>Job Application Form</span>
+              </h2>
+              <p className="text-xs text-slate-500 leading-relaxed font-sans">
+                Please complete this comprehensive application to join our dispatch dispatch network.
+              </p>
+            </div>
+
+            <hr className="border-slate-100" />
+
+            {applySubmitted ? (
+              <div className="text-center py-10 space-y-4">
+                <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                  <CheckCircle2 className="w-7 h-7" />
+                </div>
+                <h3 className="font-sans font-bold text-lg text-slate-900">Application Received!</h3>
+                <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-md mx-auto text-center">
+                  Thank you for applying for the **{viewingJobOffer.title}** position. Your profile, certification status, branch choice, and tool details have been securely cataloged inside the operations database. A Georgia regional coordinator will contact you shortly.
+                </p>
+                <div className="pt-3">
+                  <button
+                    onClick={() => {
+                      setViewingJobOffer(null);
+                      setApplySubmitted(false);
+                    }}
+                    className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs tracking-wide transition-all cursor-pointer inline-flex items-center gap-1.5"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Back to Careers List</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleApplySubmit} className="space-y-6">
+                
+                {/* 1. Personal Details */}
+                <div className="space-y-4">
+                  <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block border-b border-slate-100 pb-1">
+                    1. Contact &amp; Geographic Information
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        Full Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Robert Smith"
+                        value={applyName}
+                        onChange={(e) => setApplyName(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-sans"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        Email Address *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="e.g. robert@example.com"
+                        value={applyEmail}
+                        onChange={(e) => setApplyEmail(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-sans"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        Phone Number *
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        placeholder="e.g. (404) 555-0199"
+                        value={applyPhone}
+                        onChange={(e) => setApplyPhone(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-sans"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        Nearest Georgia Branch Base *
+                      </label>
+                      <select
+                        value={applyBranch}
+                        onChange={(e) => setApplyBranch(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-sans"
+                      >
+                        <option value="Atlanta HQ">Atlanta HQ (Main Branch)</option>
+                        <option value="Savannah Office">Savannah Office</option>
+                        <option value="Augusta Hub">Augusta Hub</option>
+                        <option value="Columbus Dispatch">Columbus Dispatch</option>
+                        <option value="Macon Base">Macon Base</option>
+                        <option value="Athens Sector">Athens Sector</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Professional Background */}
+                <div className="space-y-4 pt-2">
+                  <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block border-b border-slate-100 pb-1">
+                    2. Technical Credentials &amp; Certifications
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        Field Experience (Years) *
+                      </label>
+                      <select
+                        value={applyExperienceYears}
+                        onChange={(e) => setApplyExperienceYears(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-sans"
+                      >
+                        <option value="Entry-Level (<1 Year)">Entry-Level (&lt;1 Year)</option>
+                        <option value="1-3 Years">1-3 Years</option>
+                        <option value="3-5 Years">3-5 Years</option>
+                        <option value="5-10 Years">5-10 Years</option>
+                        <option value="10+ Years Expert">10+ Years Expert</option>
+                      </select>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        Primary Certification *
+                      </label>
+                      <select
+                        value={applyCertification}
+                        onChange={(e) => setApplyCertification(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-sans"
+                      >
+                        <option value="None">No Active Certification</option>
+                        <option value="CompTIA Network+ / A+">CompTIA Network+ / A+</option>
+                        <option value="Cisco Certified (CCNA/CCNP)">Cisco Certified (CCNA/CCNP)</option>
+                        <option value="HVAC / EPA Universal">HVAC / EPA Universal</option>
+                        <option value="Fiber Optics Certified (FOA)">Fiber Optics Certified (FOA)</option>
+                        <option value="OSHA-10 / OSHA-30 Safety">OSHA-10 / OSHA-30 Safety</option>
+                        <option value="BICSI Cabling Tech">BICSI Cabling Tech</option>
+                        <option value="Other Industry License">Other Industry License</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        Expected Pay Rate ($/hr) *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. $28.50"
+                        value={applyExpectedPay}
+                        onChange={(e) => setApplyExpectedPay(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-sans"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200/60">
+                    <div className="space-y-1">
+                      <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider">
+                        Availability
+                      </label>
+                      <select
+                        value={applyAvailability}
+                        onChange={(e) => setApplyAvailability(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 font-sans"
+                      >
+                        <option value="Full-time">Full-time</option>
+                        <option value="Part-time">Part-time</option>
+                        <option value="Contract">Contract / On-Call</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5 flex flex-col justify-end">
+                      <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider leading-none">
+                        Valid Georgia DL?
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setApplyHasLicense(true)}
+                          className={`flex-1 py-1 text-center font-sans font-bold text-xs rounded-lg border cursor-pointer transition-all ${
+                            applyHasLicense 
+                              ? "bg-indigo-600 border-indigo-600 text-white shadow-xs" 
+                              : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          Yes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setApplyHasLicense(false)}
+                          className={`flex-1 py-1 text-center font-sans font-bold text-xs rounded-lg border cursor-pointer transition-all ${
+                            !applyHasLicense 
+                              ? "bg-indigo-600 border-indigo-600 text-white shadow-xs" 
+                              : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          No
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 flex flex-col justify-end">
+                      <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider leading-none">
+                        Reliable Vehicle?
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setApplyHasTransportation(true)}
+                          className={`flex-1 py-1 text-center font-sans font-bold text-xs rounded-lg border cursor-pointer transition-all ${
+                            applyHasTransportation 
+                              ? "bg-indigo-600 border-indigo-600 text-white shadow-xs" 
+                              : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          Yes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setApplyHasTransportation(false)}
+                          className={`flex-1 py-1 text-center font-sans font-bold text-xs rounded-lg border cursor-pointer transition-all ${
+                            !applyHasTransportation 
+                              ? "bg-indigo-600 border-indigo-600 text-white shadow-xs" 
+                              : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          No
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 flex flex-col justify-end">
+                      <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider leading-none">
+                        Standard Hand Tools?
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setApplyOwnsTools(true)}
+                          className={`flex-1 py-1 text-center font-sans font-bold text-xs rounded-lg border cursor-pointer transition-all ${
+                            applyOwnsTools 
+                              ? "bg-indigo-600 border-indigo-600 text-white shadow-xs" 
+                              : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          Yes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setApplyOwnsTools(false)}
+                          className={`flex-1 py-1 text-center font-sans font-bold text-xs rounded-lg border cursor-pointer transition-all ${
+                            !applyOwnsTools 
+                              ? "bg-indigo-600 border-indigo-600 text-white shadow-xs" 
+                              : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          No
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Narrative Experience */}
+                <div className="space-y-4 pt-2">
+                  <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block border-b border-slate-100 pb-1">
+                    3. Professional Qualifications Summary
+                  </h3>
+                  
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      Qualifications, Prior Work History &amp; Certifications *
+                    </label>
+                    <textarea
+                      required
+                      rows={4}
+                      placeholder="List your previous field dispatcher / engineering roles, equipment you can service, and any other credentials."
+                      value={applyExperience}
+                      onChange={(e) => setApplyExperience(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-sans"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      Cover Letter / Statement of Interest *
+                    </label>
+                    <textarea
+                      required
+                      rows={4}
+                      placeholder="Why do you want to join the Leta Technologies LLC Georgia field network?"
+                      value={applyCoverLetter}
+                      onChange={(e) => setApplyCoverLetter(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-sans"
+                    />
+                  </div>
+                </div>
+
+                {applyError && (
+                  <div className="p-3 bg-rose-50 border border-rose-100 text-xs text-rose-700 font-semibold rounded-lg">
+                    {applyError}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewingJobOffer(null);
+                      setApplyError(null);
+                    }}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-sans text-xs font-bold transition-all border border-slate-200 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={applySubmitting}
+                    className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-sans text-xs font-extrabold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {applySubmitting ? "Submitting Application..." : "Submit Application"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </main>
+
+        {/* Short footer */}
+        <footer className="bg-slate-900 text-slate-500 text-[11px] py-6 border-t border-slate-800/60 mt-20">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+            &copy; {new Date().getFullYear()} Leta Technologies LLC. Registered dispatch operations inside the State of Georgia.
+          </div>
+        </footer>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col selection:bg-indigo-100 selection:text-indigo-900" id="home">
@@ -169,6 +756,12 @@ export default function LandingPage({ onLoginClick }: LandingPageProps) {
               Services
             </button>
             <button 
+              onClick={() => scrollToSection("careers")}
+              className="text-xs font-bold text-slate-600 hover:text-indigo-600 uppercase tracking-wider transition-colors cursor-pointer"
+            >
+              Careers
+            </button>
+            <button 
               onClick={() => scrollToSection("contact")}
               className="text-xs font-bold text-slate-600 hover:text-indigo-600 uppercase tracking-wider transition-colors cursor-pointer"
             >
@@ -219,6 +812,12 @@ export default function LandingPage({ onLoginClick }: LandingPageProps) {
                 className="text-left py-2 text-sm font-bold text-slate-700 hover:text-indigo-600 transition-colors cursor-pointer"
               >
                 Services
+              </button>
+              <button
+                onClick={() => scrollToSection("careers")}
+                className="text-left py-2 text-sm font-bold text-slate-700 hover:text-indigo-600 transition-colors cursor-pointer"
+              >
+                Careers
               </button>
               <button
                 onClick={() => scrollToSection("contact")}
@@ -520,6 +1119,79 @@ export default function LandingPage({ onLoginClick }: LandingPageProps) {
                 </span>
               </div>
 
+            </div>
+          </div>
+        </section>
+
+        {/* Careers / Job Opportunities Section */}
+        <section id="careers" className="py-20 bg-white border-t border-slate-200/50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-3xl mx-auto space-y-4">
+              <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2.5 py-1 rounded-full">
+                Join Our Network
+              </span>
+              <h2 className="font-sans font-extrabold text-2xl sm:text-3xl tracking-tight text-slate-950">
+                Leta Field Engineer & Technician Careers
+              </h2>
+              <p className="text-sm text-slate-500">
+                We are actively recruiting skilled field engineers, IT coordinators, smart-hands technicians, and apprentices throughout Georgia. See active openings below and apply in 60 seconds.
+              </p>
+            </div>
+
+            {/* Job Openings Grid */}
+            <div className="mt-12 max-w-4xl mx-auto space-y-6">
+              {jobOffers.length === 0 ? (
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-10 text-center space-y-3">
+                  <Briefcase className="w-10 h-10 text-indigo-500 mx-auto" />
+                  <h3 className="font-sans font-bold text-sm text-slate-800">
+                    No active listings at this moment
+                  </h3>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                    Our Georgia dispatch operations are growing. If you are an experienced field engineer looking to join our roster, please send your resume and details directly to our mailroom at <strong className="text-indigo-600">techs@leta.repair</strong>.
+                  </p>
+                </div>
+              ) : (
+                jobOffers.map((offer) => (
+                  <div 
+                    key={offer.id} 
+                    className="bg-slate-50 hover:bg-indigo-50/5 border border-slate-200/80 hover:border-indigo-200 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 transition-all text-left shadow-2xs"
+                  >
+                    <div className="space-y-3 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-sans font-extrabold text-slate-950 text-base sm:text-lg leading-tight">
+                          {offer.title}
+                        </h3>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-50 border border-emerald-100 text-emerald-700 uppercase">
+                          {offer.status}
+                        </span>
+                      </div>
+                      
+                      <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-slate-500">
+                        <span className="flex items-center gap-1.5 font-sans">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          {offer.location}
+                        </span>
+                        <span className="flex items-center gap-1.5 font-sans">
+                          <DollarSign className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          {offer.salaryRange || "Competitive"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setViewingJobOffer(offer);
+                        setApplySubmitted(false);
+                        setApplyError(null);
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                      className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-xs font-extrabold rounded-lg transition-all shadow-xs shrink-0 cursor-pointer text-center sm:self-center self-start"
+                    >
+                      View Details &amp; Apply
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </section>
@@ -859,6 +1531,152 @@ export default function LandingPage({ onLoginClick }: LandingPageProps) {
               >
                 Agree & Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- Online Job Application Modal --- */}
+      {selectedOfferForApply && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col text-left">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-slate-900 font-sans font-extrabold text-sm sm:text-base">
+                <Briefcase className="w-5 h-5 text-indigo-600" />
+                <span>Apply: {selectedOfferForApply.title}</span>
+              </div>
+              <button
+                onClick={() => setSelectedOfferForApply(null)}
+                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto space-y-4">
+              {applySubmitted ? (
+                <div className="text-center py-8 space-y-4">
+                  <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <h3 className="font-sans font-bold text-base text-slate-900">Application Received!</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto text-center">
+                    Thank you for applying for the **{selectedOfferForApply.title}** position with Leta Technologies. Your information has been delivered to our administrative coordinators. An operations manager will evaluate your application and contact you soon.
+                  </p>
+                  <button
+                    onClick={() => setSelectedOfferForApply(null)}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs tracking-wide transition-all cursor-pointer mx-auto block"
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleApplySubmit} className="space-y-4">
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-600 space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                      <MapPin className="w-3.5 h-3.5 text-indigo-500" />
+                      <span>{selectedOfferForApply.location} • {selectedOfferForApply.salaryRange}</span>
+                    </div>
+                    <p className="font-sans leading-normal">
+                      We require certified regional technicians. Your coordinates and background are validated by regional supervisors.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        Full Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Robert Smith"
+                        value={applyName}
+                        onChange={(e) => setApplyName(e.target.value)}
+                        className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        Email Address *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="e.g. robert@example.com"
+                        value={applyEmail}
+                        onChange={(e) => setApplyEmail(e.target.value)}
+                        className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                      Phone Number *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="e.g. (404) 555-0199"
+                      value={applyPhone}
+                      onChange={(e) => setApplyPhone(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                      Professional Qualifications & Experience Summary *
+                    </label>
+                    <textarea
+                      required
+                      rows={3}
+                      placeholder="Summarize your work experience, telecom / cabling / HVAC / smart-hands certifications, and tools owned."
+                      value={applyExperience}
+                      onChange={(e) => setApplyExperience(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                      Cover Letter / Statement of Interest *
+                    </label>
+                    <textarea
+                      required
+                      rows={3}
+                      placeholder="Tell us why you're a great fit for the Leta Technologies Georgia service network."
+                      value={applyCoverLetter}
+                      onChange={(e) => setApplyCoverLetter(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800"
+                    />
+                  </div>
+
+                  {applyError && (
+                    <div className="p-2 bg-rose-50 border border-rose-100 text-[10px] text-rose-700 font-semibold rounded-lg">
+                      {applyError}
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2 border-t border-slate-150 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOfferForApply(null)}
+                      className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-sans text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={applySubmitting}
+                      className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-xs font-extrabold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                    >
+                      {applySubmitting ? "Submitting..." : "Submit Application"}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         </div>

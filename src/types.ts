@@ -78,6 +78,31 @@ export interface Inquiry {
   message: string;
   createdAt: string;
   read?: boolean;
+  type?: "general" | "job_application";
+  jobOfferId?: string;
+  jobTitle?: string;
+  phone?: string;
+  resumeText?: string;
+  preferredBranch?: string;
+  hasLicense?: boolean;
+  licenseNumber?: string;
+  certifications?: string[];
+  ownsTools?: boolean;
+  hasTransportation?: boolean;
+  expectedPay?: string;
+  experienceYears?: string;
+  availability?: "Full-time" | "Part-time" | "Contract";
+}
+
+export interface JobOffer {
+  id: string;
+  title: string;
+  location: string;
+  description: string;
+  requirements: string;
+  salaryRange?: string;
+  status: "active" | "filled" | "draft";
+  createdAt: string;
 }
 
 export interface Paystub {

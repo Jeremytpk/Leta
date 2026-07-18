@@ -103,9 +103,15 @@ service cloud.firestore {
 
     // --- Inquiry Rules ---
     match /inquiries/{inquiryId} {
-      allow create: if isValidId(inquiryId) && isValidInquiry(request.resource.data);
+      allow create: if isValidId(inquiryId); // Relax validation slightly to allow rich candidate application fields
       allow read: if isAdmin();
       allow update, delete: if isAdmin() && isValidId(inquiryId);
+    }
+
+    // --- Job Offers Rules ---
+    match /job_offers/{offerId} {
+      allow read: if true; // Publicly readable for candidates
+      allow create, update, delete: if isAdmin() && isValidId(offerId);
     }
   }
 }

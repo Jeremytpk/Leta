@@ -15,7 +15,7 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "./firebase";
-import { Branch, Employee, Job, TicketComment, ChatMessage, Paystub, calculateDeductions, UserRole, Inquiry } from "../types";
+import { Branch, Employee, Job, TicketComment, ChatMessage, Paystub, calculateDeductions, UserRole, Inquiry, JobOffer } from "../types";
 
 // Active collection names
 const BRANCHES_COL = "branches";
@@ -24,6 +24,7 @@ const JOBS_COL = "jobs";
 const CHATS_COL = "chats";
 const PAYSTUBS_COL = "paystubs";
 const INQUIRIES_COL = "inquiries";
+const JOB_OFFERS_COL = "job_offers";
 
 // --- Branch Management ---
 export async function createBranch(branch: Omit<Branch, "createdAt">): Promise<void> {
@@ -803,6 +804,68 @@ export async function updateInquiry(id: string, updates: Partial<Inquiry>): Prom
   const path = `${INQUIRIES_COL}/${id}`;
   try {
     const docRef = doc(db, INQUIRIES_COL, id);
+    await updateDoc(docRef, updates);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+// --- Job Offers Management ---
+export async function createJobOffer(offer: JobOffer): Promise<void> {
+  const path = `${JOB_OFFERS_COL}/${offer.id}`;
+  try {
+    const docRef = doc(db, JOB_OFFERS_COL, offer.id);
+    await setDoc(docRef, offer);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function fetchJobOffers(): Promise<JobOffer[]> {
+  try {
+    const listSnapshot = await getDocs(collection(db, JOB_OFFERS_COL));
+    const result: JobOffer[] = [];
+    listSnapshot.forEach((doc) => {
+      result.push(doc.data() as JobOffer);
+    });
+    return result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, JOB_OFFERS_COL);
+    return [];
+  }
+}
+
+export function subscribeJobOffers(onUpdate: (offers: JobOffer[]) => void): Unsubscribe {
+  const q = query(collection(db, JOB_OFFERS_COL), orderBy("createdAt", "desc"));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const result: JobOffer[] = [];
+      snapshot.forEach((doc) => {
+        result.push(doc.data() as JobOffer);
+      });
+      onUpdate(result);
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.GET, JOB_OFFERS_COL);
+    }
+  );
+}
+
+export async function deleteJobOffer(id: string): Promise<void> {
+  const path = `${JOB_OFFERS_COL}/${id}`;
+  try {
+    const docRef = doc(db, JOB_OFFERS_COL, id);
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
+export async function updateJobOffer(id: string, updates: Partial<JobOffer>): Promise<void> {
+  const path = `${JOB_OFFERS_COL}/${id}`;
+  try {
+    const docRef = doc(db, JOB_OFFERS_COL, id);
     await updateDoc(docRef, updates);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
